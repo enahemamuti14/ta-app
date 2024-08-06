@@ -96,7 +96,7 @@ class UserController extends Controller
             'password' => Hash::make($request->password),
             'tenant_id' => $request->tenant_id,
         ]);
-    
+
         $role = Role::find($request->role);
     
         if ($role) {

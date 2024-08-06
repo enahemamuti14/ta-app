@@ -13,7 +13,7 @@ class User extends Authenticatable
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'email', 'password'];
+    protected $fillable = ['name', 'email', 'password', 'tenant_id'];
 
     // Define relationship to Role
     public function roles(): BelongsToMany
@@ -26,9 +26,9 @@ class User extends Authenticatable
     {
         return $this->roles->contains('name', $roleName);
     }
-    public function tenants()
+    public function tenant()
     {
-        return $this->belongsTo(Tenant::class, 'tenant_id');
+        return $this->belongsTo(Tenant::class);
     }
 
 }

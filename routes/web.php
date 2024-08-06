@@ -65,4 +65,30 @@ Route::get('/link-tenant-to-user/form', [TenantController::class, 'showLinkForm'
 Route::post('/link-tenant-to-user', [TenantController::class, 'linkTenantToUser'])->name('tenant.link');
 Route::get('/link-tenant-to-user/data', [TenantController::class, 'showUserTenant'])->name('tenant.link.data');
 
-Route::get('/dashboard/today-sales', [KasirController::class, 'todaySalesReport'])->name('dashboard.today-sales');
+Route::get('/tenant/sales-details', [TenantController::class, 'showlaporan'])->name('tenants.salesDetails');
+Route::get('/menu', [TenantController::class, 'showmenu'])->name('showmenu');
+Route::get('/menu/{id}/edit', [TenantController::class, 'showupdate'])->name('tenants.updatemenu');
+Route::put('menu/{id}', [TenantController::class, 'updatemenutenant'])->name('tenant.updateMenu');
+Route::delete('/menu/{id}', [TenantController::class, 'hapus'])->name('tenants.deleteMenu');
+Route::get('/menu/create', [TenantController::class, 'createmenutenant'])->name('createMenu');
+Route::post('/menu', [TenantController::class, 'storemenutenant'])->name('storeMenu');
+
+// Route::post('/save-transaction', [KasirController::class, 'saveTransaction'])->name('saveTransaction');
+// // routes/web.php
+// Route::get('/tenant/{id}/notifications', [TenantController::class, 'showNotifications'])->name('tenant.notifications');
+// Route::post('/tenant/{id}/notifications/{transactionId}/approve', [TenantController::class, 'approveTransaction'])->name('tenant.approveTransaction');
+
+// Route untuk menampilkan detail transaksi
+// Route::get('/tenant/order/', [TenantController::class, 'shownotif'])
+//     ->name('tenant.transactions.show');
+
+// // Route untuk menyetujui transaksi
+// Route::post('/tenant/order/approve', [TenantController::class, 'approve'])
+//     ->name('tenant.transactions.approve');
+
+Route::get('/tenant/orders', [TenantController::class, 'showOrders'])->name('tenant.orders');
+
+// routes/web.php
+Route::post('/orders/accept/{id}', [KasirController::class, 'acceptOrder'])->name('orders.accept');
+Route::post('/orders/reject/{id}', [KasirController::class, 'rejectOrder'])->name('orders.reject');
+Route::post('/transactions/temp-store', [TransactionController::class, 'tempStore'])->name('transactions.tempStore');

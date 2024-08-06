@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Menu;
+use App\Models\Order;
 use Illuminate\Http\Request;
 use App\Models\Transaction;
+use App\Models\TransactionDetail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class TenantController extends Controller
 {
@@ -23,7 +26,67 @@ class TenantController extends Controller
     public function home()
     {
         $user = Auth::user();
-        return view('tenantHome', compact('user'));
+        $tenantId = Auth::user()->tenant_id;
+        $date = Carbon::today();
+
+        // Ambil data pemasukan hari ini
+        // $incomeData = DB::table('transactions')
+        //     ->join('transaction_details', 'transactions.id', '=', 'transaction_details.transaction_id')
+        //     ->select(
+        //         DB::raw('SUM(transactions.amount) as total_income')
+        //     )
+        //     ->where('transactions.tenant_id', $tenantId)
+        //     ->whereDate('transactions.created_at', $date)
+        //     ->first();
+
+        $incomeData = Transaction::whereDate('date', Carbon::today())
+        ->selectRaw('SUM(amount) as total_income')
+        ->first();
+
+        // Ambil data pesanan hari ini
+        $orderData = DB::table('transactions')
+            ->join('transaction_details', 'transactions.id', '=', 'transaction_details.transaction_id')
+            ->select(
+                DB::raw('COUNT(transaction_details.id) as total_orders')
+            )
+            ->where('transactions.tenant_id', $tenantId)
+            ->whereDate('transactions.created_at', $date)
+            ->first();
+
+        // Ambil grafik pemasukan per menu
+        $menuData = DB::table('transaction_details')
+            ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
+            ->select(
+                'transaction_details.menu_name as menu_name', // Mengambil nama menu dari transaction_details
+                DB::raw('SUM(transaction_details.quantity * transaction_details.price) as total_sales')
+            )
+            ->where('transactions.tenant_id', $tenantId)
+            ->whereDate('transactions.created_at', $date)
+            ->groupBy('transaction_details.menu_name') // Kelompokkan berdasarkan nama menu
+            ->get();
+
+        // Ambil tabel transaksi hari ini
+        $todaySales = DB::table('transactions')
+            ->join('transaction_details', 'transactions.id', '=', 'transaction_details.transaction_id')
+            ->select(
+                'transactions.id as transaction_id',
+                'transaction_details.menu_name as menu_name', // Mengambil nama menu dari transaction_details
+                'transaction_details.quantity',
+                DB::raw('transaction_details.quantity * transaction_details.price as subtotal'),
+                'transactions.created_at as date'
+            )
+            ->where('transactions.tenant_id', $tenantId)
+            ->whereDate('transactions.created_at', $date)
+            ->get();
+
+
+                // Log data untuk debugging
+            Log::info('Income Data: ', (array) $incomeData);
+            Log::info('Order Data: ', (array) $orderData);
+            Log::info('Menu Data: ', $menuData->toArray());
+            Log::info('Today Sales: ', $todaySales->toArray());
+
+        return view('tenantHome', compact('user','incomeData', 'orderData', 'menuData', 'todaySales'));
     }
 
     public function create()
@@ -220,29 +283,212 @@ class TenantController extends Controller
 
         return view('detail-penjualan', compact('tenant', 'salesDetails','user'));
     }
-    // public function linkTenantToUser(Request $request, $userId)
-    // {
-    //     $request->validate([
-    //         'tenant_id' => 'required|exists:tenants,id',
-    //     ]);
 
-    //     $user = User::findOrFail($userId);
-    //     $user->tenant_id = $request->tenant_id;
-    //     $user->save();
+    public function salestenant($tenant_id)
+    {
+        // Ambil tenant_id dari pengguna yang sedang login
+        $tenantId = Auth::user()->tenant_id;
+        // Ambil tenant berdasarkan ID yang diberikan
+        $tenant = Tenant::findOrFail($tenant_id);
 
-    //     return redirect()->back()->with('success', 'Tenant berhasil dihubungkan dengan pengguna.');
-    // }
-    // public function showLinkForm()
+        // Ambil penjualan hari ini berdasarkan tenant_id
+        $todaySales = DB::table('transactions')
+            ->join('transaction_details', 'transactions.id', '=', 'transaction_details.transaction_id')
+            ->join('tenants', 'transactions.tenant_id', '=', 'tenants.id') // Sesuaikan nama tabel dengan 'tenants'
+            ->select(
+                'transactions.id as transaction_id',
+                'tenants.namatenant as tenant_name',
+                'transaction_details.menu_name as menu_name',
+                'transaction_details.quantity',
+                DB::raw('transaction_details.quantity * transaction_details.price as subtotal'),
+                'transactions.created_at as date'
+            )
+            ->where('transactions.tenant_id', $tenant_id)
+            ->whereDate('transactions.created_at', Carbon::today()) // Tambahkan filter untuk hari ini
+            ->get();
+
+        // Kirim data ke view
+        return view('tenantHome', compact('todaySales', 'tenant'));
+    }
+    public function showlaporan(Request $request)
+{
+    $user = Auth::user();
+    $tenantId = Auth::user()->tenant_id;
+    $date = $request->input('date');
+    $month = $request->input('month');
+    $year = $request->input('year');
+
+    $query = DB::table('transactions')
+        ->join('transaction_details', 'transactions.id', '=', 'transaction_details.transaction_id')
+        ->select(
+            'transactions.id as transaction_id',
+            'transaction_details.menu_name as menu_name',
+            'transaction_details.quantity',
+            DB::raw('transaction_details.quantity * transaction_details.price as subtotal'),
+            'transactions.created_at as date'
+        )
+        ->where('transactions.tenant_id', $tenantId); // Filter berdasarkan tenant_id
+
+    if ($date) {
+        $query->whereDate('transactions.created_at', $date);
+    } elseif ($month) {
+        $query->whereYear('transactions.created_at', date('Y', strtotime($month)))
+            ->whereMonth('transactions.created_at', date('m', strtotime($month)));
+    } elseif ($year) {
+        $query->whereYear('transactions.created_at', $year);
+    } else {
+        $query->whereDate('transactions.created_at', Carbon::today());
+    }
+
+    $salesDetails = $query->get();
+
+    return view('tenants.laporanpenjualan', compact('salesDetails', 'user'));
+}
+
+    public function showmenu(Request $request)
+    {
+        $user = Auth::user(); // Ambil pengguna saat ini
+        $tenantId = Auth::user()->tenant_id; // Ambil tenant_id pengguna saat ini
+
+        $tenant = Tenant::findOrFail($tenantId);
+
+        // Ambil query pencarian jika ada
+        $query = $request->input('query');
+
+        // Filter menu berdasarkan tenant_id dan query pencarian
+        $menus = Menu::where('tenant_id', $tenantId)
+            ->where(function ($queryBuilder) use ($query) {
+                if ($query) {
+                    $queryBuilder->where('name', 'like', "%{$query}%")
+                        ->orWhere('description', 'like', "%{$query}%");
+                }
+            })
+            ->get();
+
+        return view('tenants.menus', compact('tenant', 'menus', 'user'));
+    }
+
+    // Menampilkan form tambah menu
+    public function showupdate($id)
+    {
+        $user = Auth::user();
+        $menu = Menu::findOrFail($id);
+        
+        return view('tenants.updatemenu', compact('menu','user'));
+    }
+    public function updatemenutenant(Request $request, $id)
+    {
+        // Ambil pengguna dan tenant saat ini
+        $user = Auth::user(); 
+        $tenantId = $user->tenant_id; 
+
+        // Validasi data
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'price' => 'required|numeric|min:0',
+        ]);
+
+        // Temukan menu berdasarkan ID
+        $menu = Menu::findOrFail($id);
+
+        // Opsional: Pastikan menu terkait dengan tenant yang benar
+        if ($menu->tenant_id !== $tenantId) {
+            return redirect()->route('tenants.menus')->with('error', 'Akses ditolak. Menu tidak terkait dengan tenant Anda.');
+        }
+
+        // Perbarui data menu
+        $menu->update([
+            'name' => $request->input('name'),
+            'description' => $request->input('description'),
+            'price' => $request->input('price'),
+        ]);
+
+        // Redirect dengan pesan sukses
+        return redirect()->route('showmenu')->with('success', 'Menu berhasil diperbarui.');
+    }
+
+    public function hapus($id)
+    {
+        $menu = Menu::findOrFail($id);
+        $menu->delete();
+
+        return redirect()->route('showmenu')->with('success', 'Menu berhasil dihapus.');
+    }
+
+    // Menampilkan form tambah menu
+    public function createmenutenant()
+    {
+        $user = Auth::user();
+        return view('tenants.createMenu', compact('user'));
+    }
+
+    public function storemenutenant(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'price' => 'required|numeric|min:0',
+        ]);
+
+        $tenantId = Auth::user()->tenant_id;
+
+        Menu::create([
+            'tenant_id' => $tenantId,
+            'name' => $request->input('name'),
+            'description' => $request->input('description'),
+            'price' => $request->input('price'),
+        ]);
+
+        return redirect()->route('showmenu')->with('success', 'Menu berhasil ditambahkan.');
+    }
+
+    // // app/Http/Controllers/TenantController.php
+    // public function showNotifications($id)
     // {
     //     $user = Auth::user();
-    //     $tenants = Tenant::all();
-    //     return view('tenants.link', compact('user', 'tenants'));
+    //     $tenant = Tenant::find($id);
+    //     $transactions = TransactionDetail::where('tenant_id', $id)
+    //                                 ->where('status', 'pending')
+    //                                 ->get();
+        
+    //     return view('tenants.notifications', compact('tenant', 'transactions', 'user'));
     // }
-    // public function showUserTenant()
-    // {
-    //     $user = Auth::user();
-    //     $tenant = $user->tenant; // Mengambil tenant terkait dengan pengguna yang sedang login
 
-    //     return view('tenants.tenantUser', compact('tenant', 'user'));
+    // public function approveTransaction($id, $transactionId)
+    // {
+    //     $transaction = TransactionDetail::find($transactionId);
+    //     $transaction->status = 'approved';
+    //     $transaction->save();
+
+    //     return redirect()->route('tenant.notifications', ['id' => $id])
+    //                     ->with('success', 'Pesanan disetujui');
     // }
+
+    public function shownotif(TransactionDetail $transaction_detail)
+    {
+        $user = Auth::user();
+        // $notifications = Auth::user()->notifications;
+        
+        return view('tenants.notifications', compact('transaction_detail', 'user'));
+    }
+
+    public function approve(TransactionDetail $transaction_detail)
+    {
+        $transaction_detail->status = 'approved';
+        $transaction_detail->save();
+
+        return redirect()->route('tenants.notifications', $transaction_detail)->with('success', 'Pesanan telah disetujui.');
+    }
+public function showOrders()
+{
+    $user = Auth::user();
+    $items = Order::where('tenant_id', $user->tenant_id) // Ambil data sesuai tenant_id
+                                ->orderBy('created_at', 'desc') // Atur urutan jika perlu
+                                ->get(); 
+
+    return view('tenants.notifications', compact('items', 'user'));
+}
+
+
 }

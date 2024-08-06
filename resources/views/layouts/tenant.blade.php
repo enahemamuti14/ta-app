@@ -27,7 +27,7 @@
             </div> --}}
 
             <!-- Profile Menu -->
-            <div class="flex ml-72 gap-2 justify-center items-center">
+            <div class="flex ml-64 gap-2 justify-center items-center">
                 <button class="flex items-center ">
                     <img src="{{ asset('img/profil.png') }}" alt="Profile" class="w-10 h-10 rounded-full">
                 </button>
@@ -49,20 +49,20 @@
 
                 <!-- Links -->
                 <nav class="flex flex-col items-center w-full px-0 pt-10">
-                    <a href="" class="flex flex-col w-full items-center px-0 py-4 text-gray-300 hover:bg-gray-700">
+                    <a href="{{ Route('tenant.orders') }}" class="flex flex-col w-full items-center px-0 py-4 text-gray-300 hover:bg-gray-700">
                         <div class="flex items-center justify-center mb-1">
                             <img src="{{ asset('img/pesanan.png') }}" alt="Users" class="w-8 h-8">
                         </div>
                         Pesanan
                     </a>
-                    <a href="" class="flex flex-col items-center px-4 py-4 text-gray-300 hover:bg-gray-700">
+                    <a href="{{ Route('tenants.salesDetails') }}" class="flex flex-col items-center px-4 py-4 text-gray-300 hover:bg-gray-700">
                         <div class="flex items-center justify-center mb-1">
                             <img src="{{ asset('img/laporanpembayaran.png') }}" alt="Home" class="w-6 h-6">
                         </div>
                         <p>Laporan</p>
                         <p>Penjualan</p>
                     </a>
-                    <a href="" class="flex flex-col w-full items-center px-0 py-4 text-gray-300 hover:bg-gray-700">
+                    <a href="{{ Route('showmenu') }}" class="flex flex-col w-full items-center px-0 py-4 text-gray-300 hover:bg-gray-700">
                         <div class="flex items-center justify-center mb-1">
                             <img src="{{ asset('img/menu.png') }}" alt="Settings" class="w-6 h-6">
                         </div>

@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Transaction;
 use App\Models\Tenant;
+use App\Models\Order;
+use App\Models\User;
 use App\Models\TransactionDetail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Validator; 
 
 class TransactionController extends Controller
 {
@@ -17,13 +20,15 @@ class TransactionController extends Controller
     {
         // Validasi data dari request
         $request->validate([
-            'order_data' => 'required|json',
+            'order_data' => 'required|string',
             'payment_method' => 'required|string',
             'amount_given' => 'required|numeric|min:0'
         ]);
+
+        dd($request);
     
         // Ambil data pesanan, metode pembayaran, dan jumlah uang yang diberikan
-        $orderData = json_decode($request->input('order_data'), true);
+        $orderData = json_decode($request['order_data'], true);
         $paymentMethod = $request->input('payment_method');
         $amountGiven = $request->input('amount_given');
     
@@ -68,19 +73,22 @@ class TransactionController extends Controller
                 $transactionDetail->amount_given = $amountGiven;
                 $transactionDetail->change_amount = $changeAmount;
                 $transactionDetail->save();
+                dd($transactionDetail);
             }
     
             // Commit transaksi
             DB::commit();
     
-            // Redirect dengan pesan sukses
+
             return redirect()->route('payment-detail')->with('success', 'Pesanan berhasil disimpan.');
         } catch (\Exception $e) {
-            // Rollback transaksi jika terjadi kesalahan
+
             DB::rollBack();
+
             return redirect()->back()->with('error', 'Gagal menyimpan pesanan. Pesan kesalahan: ' . $e->getMessage());
         }
     }
+
     
     public function saveTransaction(Request $request)
     {
@@ -98,7 +106,11 @@ class TransactionController extends Controller
         $user = Auth::user();
         $items = session('temporary_transaction', []);
         $tenantId = session('tenant_id'); // Ambil tenant_id dari session jika ada
-        return view('kasirs.payment-detail', compact('items', 'tenantId','user'));
+
+        $notifications = session()->pull('notifications', []);
+
+
+        return view('kasirs.payment-detail', compact('items', 'tenantId','user', 'notifications'));
     }
 
     public function penjualan(Request $request)
@@ -158,31 +170,73 @@ class TransactionController extends Controller
         return view('pembayaran', compact('user'));
     }
 
-    public function todaySalesReport()
+    public function tempStore(Request $request)
     {
-        $user = Auth::user();
-
-        // Pastikan pengguna ada dan memiliki tenant_id
-        if (!$user || !$user->tenant_id) {
-            return view('dashboard', ['todaySales' => collect()]);
+        // Log awal untuk memeriksa data request
+        // Log::info('Request data:', $request->all());
+        
+        // Debugging dengan dd
+        // dd($request->all());
+    
+        // Validasi data yang diterima
+        $validated = $request->validate([
+            'order_data' => 'required|string', // Pastikan 'order_data' adalah string
+            'payment_method' => 'required|string',
+            'amount_given' => 'required|numeric|min:0',
+        ]);
+    
+        // Debugging setelah validasi
+        // dd($validated);
+    
+        // Dekode JSON order_data
+        $orderData = json_decode($validated['order_data'], true);
+    
+        // Debugging dengan dd setelah dekode
+        // dd($orderData);
+    
+        // Mulai transaksi database
+        DB::beginTransaction();
+    
+        try {
+            // Ambil tenantId dari orderData
+            $tenantId = $orderData[0]['tenantId'] ?? null;
+    
+            if (is_null($tenantId)) {
+                throw new \Exception('ID tenant tidak ditemukan.');
+            }
+    
+            // Simpan order untuk setiap item dalam transaksi
+            foreach ($orderData as $item) {
+                $order = new Order();
+                $order->order_code = uniqid(); // Generate unique order code
+                $order->order_time = now();
+                $order->menu = $item['menuName'] ?? 'N/A';
+                $order->qty = $item['quantity'] ?? 0;
+                $order->note = $item['notes'] ?? '';
+                $order->status = 'kitchen'; // Status default
+                $order->tenant_id = $tenantId; // Menggunakan tenantId dari orderData
+                $order->save();
+    
+                // Debugging dengan dd setelah menyimpan setiap order
+                // dd($order);
+            }
+    
+            // Commit transaksi jika semua order berhasil disimpan
+            DB::commit();
+    
+            // Redirect atau tampilkan pesan sukses
+            return redirect()->route('payment-detail')->with('success', 'Mengirimkan pesanan pada tenant.');
+    
+        } catch (\Exception $e) {
+            // Rollback transaksi jika terjadi kesalahan
+            DB::rollBack();
+    
+            // Log exception
+            // Log::error('Error saving order:', ['message' => $e->getMessage()]);
+    
+            // Redirect atau tampilkan pesan error
+            return redirect()->route('payment-detail')->with('error', 'Terjadi kesalahan saat menyimpan pesanan.');
         }
-
-        // Dapatkan ID tenant dari pengguna
-        $tenantId = $user->tenant_id;
-
-        // Ambil transaksi hari ini untuk tenant yang sesuai
-        $todaySales = DB::table('transaction_details')
-            ->join('tenants', 'transaction_details.tenant_id', '=', 'tenants.id')
-            ->where('transaction_details.tenant_id', $tenantId)
-            ->whereDate('transaction_details.date', today())
-            ->select('tenants.name as tenant_name', 
-                     DB::raw('count(*) as transaction_count'), 
-                     DB::raw('sum(transaction_details.amount) as total_amount'))
-            ->groupBy('tenants.name')
-            ->get();
-
-
-        return view('tenantHome', ['todaySales' => $todaySales]);
     }
-
+    
 }

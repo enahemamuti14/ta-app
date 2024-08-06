@@ -34,34 +34,34 @@
             </div>
 
             <div class="mb-4">
-                <label for="role" class="block text-gray-700 text-sm font-bold mb-2 ">Role:</label>
-                <select name="role" id="role" class="mt-1 block w-full shadow appearance-none border rounded py-2 px-3 leading-tight focus:outline-none focus:shadow-outline " required>
+                <label for="role" class="block text-gray-700 text-sm font-bold mb-2">Role:</label>
+                <select name="role" id="role" class="mt-1 block w-full shadow appearance-none border rounded py-2 px-3 leading-tight focus:outline-none focus:shadow-outline" required>
                     @foreach($roles as $role)
-                        <option value="{{ $role->id }}">{{ $role->name }}</option>
+                        <option value="{{ $role->id }}" {{ old('role') == $role->id ? 'selected' : '' }}>{{ $role->name }}</option>
                     @endforeach
                 </select>
             </div>
 
-            <div class="mb-4">
+            <div class="mb-4 {{ old('role') != 3 ? 'hidden' : '' }}">
                 <label for="tenant_id" class="block text-gray-700 text-sm font-bold mb-2">Tenant:</label>
                 <select name="tenant_id" id="tenant_id" class="mt-1 block w-full shadow appearance-none border rounded py-2 px-3 leading-tight focus:outline-none focus:shadow-outline">
                     <option value="">Select Tenant</option>
                     @foreach($tenants as $tenant)
-                        <option value="{{ $tenant->id }}">{{ $tenant->namatenant }}</option>
+                        <option value="{{ $tenant->id }}" {{ old('tenant_id') == $tenant->tenant_id ? 'selected' : '' }}>{{ $tenant->namatenant }}</option>
                     @endforeach
+                    <pre>{{ print_r($tenants) }}</pre>
+
                 </select>
             </div>
-            
-
 
             <div class="mb-4">
                 <label for="password" class="block text-gray-700 text-sm font-bold mb-2">Password :</label>
-                <input type="password" name="password" id="password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ">
+                <input type="password" name="password" id="password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
             </div>
 
             <div class="mb-4">
                 <label for="password_confirmation" class="block text-gray-700">Confirm Password:</label>
-                <input type="password" name="password_confirmation" id="password_confirmation" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline " required>
+                <input type="password" name="password_confirmation" id="password_confirmation" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
             </div>
 
             <div class="flex items-center justify-between">
@@ -70,6 +70,27 @@
                 </button>
             </div>
         </form>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const roleSelect = document.getElementById('role');
+                const tenantSelect = document.getElementById('tenant_id');
+                
+                function toggleTenantDropdown() {
+                    if (roleSelect.value == '3') { // Misalnya ID 3 untuk tenant
+                        tenantSelect.parentElement.classList.remove('hidden');
+                    } else {
+                        tenantSelect.parentElement.classList.add('hidden');
+                    }
+                }
+            
+                // Inisialisasi tampilan dropdown tenant
+                toggleTenantDropdown();
+            
+                // Tambahkan event listener untuk role
+                roleSelect.addEventListener('change', toggleTenantDropdown);
+            });
+            </script>
+            
     </div>
 </div>
 @endsection
