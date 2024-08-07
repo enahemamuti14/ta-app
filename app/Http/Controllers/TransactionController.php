@@ -18,46 +18,56 @@ class TransactionController extends Controller
 {
     public function store(Request $request)
     {
+        // Log awal untuk memeriksa data request
+        // Log::info('Request data:', $request->all());
+        
+        // Debugging dengan dd
+        // dd($request->all());
+        
         // Validasi data dari request
-        $request->validate([
+        $validatedData = $request->validate([
             'order_data' => 'required|string',
             'payment_method' => 'required|string',
             'amount_given' => 'required|numeric|min:0'
         ]);
-
-        dd($request);
-    
+        
+        // Debugging setelah validasi
+        // dd($validatedData);
+        
         // Ambil data pesanan, metode pembayaran, dan jumlah uang yang diberikan
-        $orderData = json_decode($request['order_data'], true);
-        $paymentMethod = $request->input('payment_method');
-        $amountGiven = $request->input('amount_given');
-    
+        $orderData = json_decode($validatedData['order_data'], true);
+        
+        // Debugging dengan dd setelah dekode
+        // dd($orderData);
+        
+        $paymentMethod = $validatedData['payment_method'];
+        $amountGiven = $validatedData['amount_given'];
+        
         if (empty($orderData) || !is_array($orderData)) {
             return redirect()->back()->with('error', 'Data pesanan tidak valid.');
         }
-    
+        
         // Mulai transaksi database
         DB::beginTransaction();
-    
+        
         try {
-            // Ambil tenantId dari orderData
             $tenantId = $orderData[0]['tenantId'] ?? null;
-    
+        
             if (is_null($tenantId)) {
                 throw new \Exception('ID tenant tidak ditemukan.');
             }
-    
+        
             // Hitung total amount dan kembalian
             $totalAmount = array_sum(array_map(fn($item) => $item['menuPrice'] * $item['quantity'], $orderData));
             $changeAmount = $amountGiven - $totalAmount;
-    
+        
             // Simpan transaksi
             $transaction = new Transaction();
-            $transaction->tenant_id = $tenantId; // Menggunakan kolom tenant_id
+            $transaction->tenant_id = $tenantId;
             $transaction->amount = $totalAmount;
             $transaction->date = now();
             $transaction->save();
-    
+        
             // Simpan detail transaksi
             foreach ($orderData as $item) {
                 $transactionDetail = new TransactionDetail();
@@ -73,22 +83,20 @@ class TransactionController extends Controller
                 $transactionDetail->amount_given = $amountGiven;
                 $transactionDetail->change_amount = $changeAmount;
                 $transactionDetail->save();
-                dd($transactionDetail);
             }
-    
+        
             // Commit transaksi
             DB::commit();
-    
-
+        
             return redirect()->route('payment-detail')->with('success', 'Pesanan berhasil disimpan.');
         } catch (\Exception $e) {
-
+            // Rollback transaksi jika terjadi kesalahan
             DB::rollBack();
-
+        
             return redirect()->back()->with('error', 'Gagal menyimpan pesanan. Pesan kesalahan: ' . $e->getMessage());
         }
     }
-
+    
     
     public function saveTransaction(Request $request)
     {
@@ -172,11 +180,6 @@ class TransactionController extends Controller
 
     public function tempStore(Request $request)
     {
-        // Log awal untuk memeriksa data request
-        // Log::info('Request data:', $request->all());
-        
-        // Debugging dengan dd
-        // dd($request->all());
     
         // Validasi data yang diterima
         $validated = $request->validate([
@@ -185,14 +188,9 @@ class TransactionController extends Controller
             'amount_given' => 'required|numeric|min:0',
         ]);
     
-        // Debugging setelah validasi
-        // dd($validated);
-    
+
         // Dekode JSON order_data
         $orderData = json_decode($validated['order_data'], true);
-    
-        // Debugging dengan dd setelah dekode
-        // dd($orderData);
     
         // Mulai transaksi database
         DB::beginTransaction();
@@ -217,8 +215,6 @@ class TransactionController extends Controller
                 $order->tenant_id = $tenantId; // Menggunakan tenantId dari orderData
                 $order->save();
     
-                // Debugging dengan dd setelah menyimpan setiap order
-                // dd($order);
             }
     
             // Commit transaksi jika semua order berhasil disimpan

@@ -69,8 +69,8 @@
             @csrf
             <input type="hidden" name="tenant_id" value="{{ $tenantId }}">
             <input type="hidden" name="order_data" value="{{ json_encode($items) }}">
-            <input type="hidden" name="payment_method" id="hidden_payment_method">
-            <input type="hidden" name="amount_given" id="hidden_amount_given">
+            <input type="hidden" name="payment_method" id="hidden_payment_method_tempStore">
+            <input type="hidden" name="amount_given" id="hidden_amount_given_tempStore">
             <button id="validate-order" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-700">
                 Validasi Pesanan
             </button>
@@ -78,14 +78,14 @@
     
         <form action="{{ route('transactions.store') }}" method="POST" class="mt-4 ml-4">
             @csrf
-            <input type="hidden" name="tenant_id" value="{{ $tenantId }}"> <!-- Update field jika tenant_id tidak sesuai dengan nama kolom -->
+            <input type="hidden" name="tenant_id" value="{{ $tenantId }}">
             <input type="hidden" name="order_data" value="{{ json_encode($items) }}">
-            <input type="hidden" name="payment_method" id="hidden_payment_method">
-            <input type="hidden" name="amount_given" id="hidden_amount_given">
-            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700">
+            <input type="hidden" name="payment_method" id="hidden_payment_method_store">
+            <input type="hidden" name="amount_given" id="hidden_amount_given_store">
+            <button type="validate-order" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700">
                 Simpan Pesanan
             </button>
-        </form>   
+        </form>  
     
     </div>
     
@@ -97,8 +97,11 @@
             document.getElementById('change_amount').textContent = 'Rp ' + (change >= 0 ? change.toFixed(2).replace(/\d(?=(?:\d{3})+(?!\d))/g, '$&,') : '0');
             
             // Update hidden fields
-            document.getElementById('hidden_payment_method').value = document.getElementById('payment_method').value;
-            document.getElementById('hidden_amount_given').value = amountGiven.toFixed(2);
+            document.getElementById('hidden_payment_method_tempStore').value = document.getElementById('payment_method').value;
+            document.getElementById('hidden_amount_given_tempStore').value = amountGiven.toFixed(2);
+
+            document.getElementById('hidden_payment_method_store').value = document.getElementById('payment_method').value;
+            document.getElementById('hidden_amount_given_store').value = amountGiven.toFixed(2);
         });
     </script>
 </div>
