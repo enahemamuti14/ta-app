@@ -3,156 +3,139 @@
 @section('content')
 <div class="absolute bottom-0 top-28 left-44 mt-5">
     <div class="container mx-auto w-screen max-w-6xl">
-        <h1 class="text-2xl font-extrabold mb-6 text-center">Dashboard Tenant</h1>
-    
-        <!-- Kontainer Grafik dengan Flexbox -->
-        <div class="flex flex-wrap -mx-2 mb-8">
-            <!-- Grafik Pemasukan Hari Ini -->
+        <h1 class="text-3xl font-extrabold mb-6 text-center">Dashboard Tenant</h1>
+        <main class="flex flex-wrap -mx-2 mb-8">
             <div class="w-full md:w-1/3 px-2 mb-4">
-                <div class="bg-white p-4 shadow-md rounded h-40">
-                    <h2 class="text-xl font-bold mb-4 text-center">Pemasukan Hari Ini</h2>
-                    <div id="incomeChart" class="h-full w-full"></div>
+                <div class="bg-white p-6 shadow-md rounded">
+                    <h2 class="text-xl font-bold mb-4">Grafik Pemasukan</h2>
+                    <canvas id="incomeChart" width="400" height="200"></canvas>
                 </div>
             </div>
-
-            <!-- Grafik Pesanan Hari Ini -->
             <div class="w-full md:w-1/3 px-2 mb-4">
-                <div class="bg-white p-4 shadow-md rounded h-40">
-                    <h2 class="text-xl font-bold mb-4 text-center">Pesanan Hari Ini</h2>
-                    <div id="orderChart" class="h-full w-full"></div>
+                <div class="bg-white p-6 shadow-md rounded">
+                    <h2 class="text-xl font-bold mb-4">Grafik Pesanan</h2>
+                    <canvas id="orderChart" width="400" height="200"></canvas>    
                 </div>
             </div>
-
-            <!-- Grafik Penjualan per Menu Hari Ini -->
             <div class="w-full md:w-1/3 px-2 mb-4">
-                <div class="bg-white p-4 shadow-md rounded h-40">
-                    <h2 class="text-xl font-bold mb-4 text-center">Penjualan Menu Hari Ini</h2>
-                    <div id="menuChart" class="h-full w-full"></div>
+                <div class="bg-white p-6 shadow-md rounded">
+                    <h2 class="text-xl font-bold mb-4">Grafik Pemasukan per Menu</h2>
+                    <canvas id="menuChart" width="400" height="200"></canvas>
                 </div>
             </div>
-        </div>
-
-        <!-- Tabel Transaksi Hari Ini -->
-        <div class="bg-white p-6 shadow-md rounded">
-            <h2 class="text-xl font-bold mb-4 text-center">Tabel Transaksi Hari Ini</h2>
-            @if($todaySales->isNotEmpty())
-            <table class="min-w-full">
-                <thead>
-                    <tr>
-                        <th class="py-3 px-4 border-b text-center">Tanggal</th>
-                        <th class="py-3 px-4 border-b text-center">ID Transaksi</th>
-                        <th class="py-3 px-4 border-b text-center">Menu</th>
-                        <th class="py-3 px-4 border-b text-center">Jumlah</th>
-                        <th class="py-3 px-4 border-b text-center">Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($todaySales as $sale)
-                    <tr>
-                        <td class="py-2 px-4 border-b text-center">{{ $sale->date }}</td>
-                        <td class="py-2 px-4 border-b text-center">{{ $sale->transaction_id }}</td>
-                        <td class="py-2 px-4 border-b text-center">{{ $sale->menu_name }}</td>
-                        <td class="py-2 px-4 border-b text-center">{{ $sale->quantity }}</td>
-                        <td class="py-2 px-4 border-b text-center">{{ number_format($sale->subtotal, 2) }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-            @else
-            <p class="text-gray-500">Belum ada transaksi hari ini.</p>
-            @endif
-        </div>
+        </main>
+      <!-- Tabel Transaksi Hari Ini -->
+      <div class="bg-white p-6 shadow-md rounded">
+        <h2 class="text-xl font-bold mb-4 text-center">Tabel Transaksi Hari Ini</h2>
+        @if($todaySales->isNotEmpty())
+        <table class="min-w-full">
+            <thead>
+                <tr>
+                    <th class="py-3 px-4 border-b text-center">Tanggal</th>
+                    <th class="py-3 px-4 border-b text-center">ID Transaksi</th>
+                    <th class="py-3 px-4 border-b text-center">Menu</th>
+                    <th class="py-3 px-4 border-b text-center">Jumlah</th>
+                    <th class="py-3 px-4 border-b text-center">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($todaySales as $sale)
+                <tr>
+                    <td class="py-2 px-4 border-b text-center">{{ $sale->date }}</td>
+                    <td class="py-2 px-4 border-b text-center">{{ $sale->transaction_id }}</td>
+                    <td class="py-2 px-4 border-b text-center">{{ $sale->menu_name }}</td>
+                    <td class="py-2 px-4 border-b text-center">{{ $sale->quantity }}</td>
+                    <td class="py-2 px-4 border-b text-center">{{ number_format($sale->subtotal, 2) }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+        @else
+        <p class="text-gray-500">Belum ada transaksi hari ini.</p>
+        @endif
     </div>
 </div>
-@endsection
 
-@section('scripts')
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    console.log('DOM fully loaded and parsed');
-    console.log('Income Data:', @json($incomeData->total_income ?? 0));
-    console.log('Order Data:', @json($orderData->total_orders ?? 0));
-    console.log('Menu Data:', @json($menuData->pluck('total_sales')));
-    console.log('Menu Labels:', @json($menuData->pluck('menu_name')));
+    // Grafik Pemasukan
+    const incomeData = @json($incomeData);
+    const incomeLabels = incomeData.map(item => item.date);
+    const incomeValues = incomeData.map(item => item.total_income);
 
-    // Grafik Pemasukan Hari Ini
-    var incomeOptions = {
-        chart: {
-            type: 'bar',
-            height: '100%'
+    const ctxIncome = document.getElementById('incomeChart').getContext('2d');
+    new Chart(ctxIncome, {
+        type: 'bar',
+        data: {
+            labels: incomeLabels,
+            datasets: [{
+                label: 'Pemasukan',
+                data: incomeValues,
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
         },
-        series: [{
-            name: 'Total Pemasukan',
-            data: [{{ $incomeData->total_income ?? 0 }}]
-        }],
-        xaxis: {
-            categories: ['Pemasukan Hari Ini']
-        },
-        colors: ['#36A2EB'],
-        plotOptions: {
-            bar: {
-                horizontal: false,
-                endingShape: 'rounded'
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
             }
         }
-    };
+    });
 
-    var incomeChart = new ApexCharts(document.querySelector("#incomeChart"), incomeOptions);
-    incomeChart.render();
+    // Grafik Pesanan
+    const orderData = @json($orderData);
+    const orderLabels = orderData.map(item => item.date);
+    const orderValues = orderData.map(item => item.total_orders);
 
-    // Grafik Pesanan Hari Ini
-    var orderOptions = {
-        chart: {
-            type: 'bar',
-            height: '100%'
+    const ctxOrder = document.getElementById('orderChart').getContext('2d');
+    new Chart(ctxOrder, {
+        type: 'bar',
+        data: {
+            labels: orderLabels,
+            datasets: [{
+                label: 'Pesanan',
+                data: orderValues,
+                backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                borderColor: 'rgba(153, 102, 255, 1)',
+                borderWidth: 1
+            }]
         },
-        series: [{
-            name: 'Total Pesanan',
-            data: [{{ $orderData->total_orders ?? 0 }}]
-        }],
-        xaxis: {
-            categories: ['Pesanan Hari Ini']
-        },
-        colors: ['#FF6384'],
-        plotOptions: {
-            bar: {
-                horizontal: false,
-                endingShape: 'rounded'
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
             }
         }
-    };
+    });
 
-    var orderChart = new ApexCharts(document.querySelector("#orderChart"), orderOptions);
-    orderChart.render();
+    // Grafik Pemasukan per Menu
+    const menuData = @json($menuData);
+    const menuLabels = menuData.map(item => item.menu_name);
+    const menuValues = menuData.map(item => item.total_sales);
 
-    // Grafik Penjualan per Menu Hari Ini
-    var menuLabels = @json($menuData->pluck('menu_name'));
-    var menuSales = @json($menuData->pluck('total_sales'));
-
-    var menuOptions = {
-        chart: {
-            type: 'bar',
-            height: '100%'
+    const ctxMenu = document.getElementById('menuChart').getContext('2d');
+    new Chart(ctxMenu, {
+        type: 'bar',
+        data: {
+            labels: menuLabels,
+            datasets: [{
+                label: 'Pemasukan per Menu',
+                data: menuValues,
+                backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                borderColor: 'rgba(255, 159, 64, 1)',
+                borderWidth: 1
+            }]
         },
-        series: [{
-            name: 'Total Penjualan',
-            data: menuSales
-        }],
-        xaxis: {
-            categories: menuLabels
-        },
-        colors: ['#4CAF50'],
-        plotOptions: {
-            bar: {
-                horizontal: false,
-                endingShape: 'rounded'
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
             }
         }
-    };
-
-    var menuChart = new ApexCharts(document.querySelector("#menuChart"), menuOptions);
-    menuChart.render();
-});
+    });
 </script>
 @endsection

@@ -27,50 +27,45 @@ class TenantController extends Controller
     {
         $user = Auth::user();
         $tenantId = Auth::user()->tenant_id;
+        $startDate = Carbon::now()->startOfWeek(); // Mulai dari awal minggu
+        $endDate = Carbon::now()->endOfWeek(); // Akhir minggu ini
         $date = Carbon::today();
-
-        // Ambil data pemasukan hari ini
-        // $incomeData = DB::table('transactions')
-        //     ->join('transaction_details', 'transactions.id', '=', 'transaction_details.transaction_id')
-        //     ->select(
-        //         DB::raw('SUM(transactions.amount) as total_income')
-        //     )
-        //     ->where('transactions.tenant_id', $tenantId)
-        //     ->whereDate('transactions.created_at', $date)
-        //     ->first();
-
-        $incomeData = Transaction::whereDate('date', Carbon::today())
-        ->selectRaw('SUM(amount) as total_income')
-        ->first();
-
-        // Ambil data pesanan hari ini
+    
+        // Ambil data pemasukan per hari selama seminggu
+        $incomeData = Transaction::whereBetween('date', [$startDate, $endDate])
+            ->where('tenant_id', $tenantId)
+            ->selectRaw('DATE(date) as date, SUM(amount) as total_income')
+            ->groupBy(DB::raw('DATE(date)')) // Mengelompokkan berdasarkan tanggal
+            ->get();
+    
+        // Ambil data pesanan per hari selama seminggu
         $orderData = DB::table('transactions')
             ->join('transaction_details', 'transactions.id', '=', 'transaction_details.transaction_id')
-            ->select(
-                DB::raw('COUNT(transaction_details.id) as total_orders')
-            )
+            ->select(DB::raw('DATE(transactions.created_at) as date, COUNT(transaction_details.id) as total_orders'))
             ->where('transactions.tenant_id', $tenantId)
-            ->whereDate('transactions.created_at', $date)
-            ->first();
-
-        // Ambil grafik pemasukan per menu
+            ->whereBetween('transactions.created_at', [$startDate, $endDate])
+            ->groupBy(DB::raw('DATE(transactions.created_at)')) // Mengelompokkan berdasarkan tanggal
+            ->get();
+    
+        // Ambil grafik pemasukan per menu selama seminggu
         $menuData = DB::table('transaction_details')
             ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
             ->select(
-                'transaction_details.menu_name as menu_name', // Mengambil nama menu dari transaction_details
+                'transaction_details.menu_name as menu_name',
                 DB::raw('SUM(transaction_details.quantity * transaction_details.price) as total_sales')
             )
             ->where('transactions.tenant_id', $tenantId)
-            ->whereDate('transactions.created_at', $date)
-            ->groupBy('transaction_details.menu_name') // Kelompokkan berdasarkan nama menu
+            ->whereBetween('transactions.created_at', [$startDate, $endDate])
+            ->groupBy('transaction_details.menu_name')
             ->get();
-
+    
+  
         // Ambil tabel transaksi hari ini
         $todaySales = DB::table('transactions')
             ->join('transaction_details', 'transactions.id', '=', 'transaction_details.transaction_id')
             ->select(
                 'transactions.id as transaction_id',
-                'transaction_details.menu_name as menu_name', // Mengambil nama menu dari transaction_details
+                'transaction_details.menu_name as menu_name',
                 'transaction_details.quantity',
                 DB::raw('transaction_details.quantity * transaction_details.price as subtotal'),
                 'transactions.created_at as date'
@@ -78,16 +73,20 @@ class TenantController extends Controller
             ->where('transactions.tenant_id', $tenantId)
             ->whereDate('transactions.created_at', $date)
             ->get();
-
-
-                // Log data untuk debugging
-            Log::info('Income Data: ', (array) $incomeData);
-            Log::info('Order Data: ', (array) $orderData);
-            Log::info('Menu Data: ', $menuData->toArray());
-            Log::info('Today Sales: ', $todaySales->toArray());
-
-        return view('tenantHome', compact('user','incomeData', 'orderData', 'menuData', 'todaySales'));
+    
+        // Debugging data
+        // dd([
+        //     'Income Data' => $incomeData,
+        //     'Order Data' => $orderData,
+        //     'Menu Data' => $menuData,
+        //     'Weekly Sales' => $todaySales
+        // ]);
+    
+        return view('tenantHome', compact('user', 'incomeData', 'orderData', 'menuData', 'todaySales'));
     }
+    
+    
+    
 
     public function create()
     {
