@@ -11,9 +11,9 @@
        <a href="{{ route('tenants.create') }}">
             <button class="relative z-10 bg-blue-500 text-white px-4 py-2 rounded -ml-14">Tambah Tenant</button>
         </a>
-        <a href="{{ route('tenant.link.form') }}">
+        <!-- <a href="{{ route('tenant.link.form') }}">
             <button class="relative z-10 bg-blue-500 text-white px-4 py-2 rounded ml-4">TenantUser</button>
-        </a>
+        </a> -->
    </div>
  {{-- tabel transaksi  --}}
  <div class="bg-white shadow rounded-md px-2 py-4 flex-1">

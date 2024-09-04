@@ -135,7 +135,7 @@ class TenantController extends Controller
 
     public function update(Request $request, Tenant $tenant)
     {
-
+        $user = Auth::user();
         $request->validate([
             'tanggalmulaisewa' => 'required|date',
             'tanggalberakhirsewa' => 'required|date',
@@ -146,8 +146,7 @@ class TenantController extends Controller
 
         $tenant->update($request->all());
 
-        return redirect()->route('tenants.index')
-                         ->with('success', 'Tenant updated successfully.');
+        return view('tenants.detailTenant', compact('tenant', 'request', 'user'));
     }
 
     public function destroy(Tenant $tenant)
@@ -269,18 +268,30 @@ class TenantController extends Controller
     {
         $user = Auth::user();
         $tenant = Tenant::findOrFail($tenant_id);
-
+        
+        // Mendapatkan tanggal hari ini
+        $today = now()->startOfDay();
+        $endOfDay = now()->endOfDay();
+        
         $salesDetails = DB::table('transactions')
             ->join('transaction_details', 'transactions.id', '=', 'transaction_details.transaction_id')
             ->join('tenant', 'transactions.tenant_id', '=', 'tenant.id')
-            ->select('transactions.id as transaction_id', 'tenant.namatenant as tenant_name', 'transaction_details.menu_name as menu_name',
-                    'transaction_details.quantity', 
-                    DB::raw('transaction_details.quantity * transaction_details.price as subtotal'),
-                    'transactions.created_at as date')
+            ->select(
+                'transactions.id as transaction_id', 
+                'tenant.namatenant as tenant_name', 
+                'transaction_details.menu_name as menu_name',
+                'transaction_details.quantity',
+                DB::raw('transaction_details.quantity * transaction_details.price as subtotal'),
+                DB::raw('DATE(transactions.created_at) as date')
+            )
             ->where('transactions.tenant_id', $tenant_id)
+            ->whereBetween('transactions.created_at', [$today, $endOfDay])
+            ->orderBy('date', 'desc')
             ->get();
-
-        return view('detail-penjualan', compact('tenant', 'salesDetails','user'));
+        
+        return view('detail-penjualan', compact('tenant', 'salesDetails', 'user'));
+        
+        
     }
 
     public function salestenant($tenant_id)

@@ -123,52 +123,95 @@ class TransactionController extends Controller
 
     public function penjualan(Request $request)
     {
-        $user = Auth::user();
-        $date = Carbon::today(); // Atau gunakan tanggal yang sesuai
-        $filter = $request->input('filter', 'daily'); // Ambil filter dari request, default 'daily'
+    //     $user = Auth::user();
+    //     $date = Carbon::today(); // Atau gunakan tanggal yang sesuai
+    //     $filter = $request->input('filter', 'daily'); // Ambil filter dari request, default 'daily'
 
-        // Logika untuk filter data
-        switch ($filter) {
-            case 'daily':
-                $date = Carbon::today();
-                $dateEnd = Carbon::tomorrow();
-                break;
-            case 'weekly':
-                $date = Carbon::now()->startOfWeek();
-                $dateEnd = Carbon::now()->endOfWeek();
-                break;
-            case 'monthly':
-                $date = Carbon::now()->startOfMonth();
-                $dateEnd = Carbon::now()->endOfMonth();
-                break;
-            case 'yearly':
-                $date = Carbon::now()->startOfYear();
-                $dateEnd = Carbon::now()->endOfYear();
-                break;
-            default:
-                $date = Carbon::today();
-                $dateEnd = Carbon::tomorrow();
-        }
+    //     // Logika untuk filter data
+    //     switch ($filter) {
+    //         case 'daily':
+    //             $date = Carbon::today();
+    //             $dateEnd = Carbon::tomorrow();
+    //             break;
+    //         case 'weekly':
+    //             $date = Carbon::now()->startOfWeek();
+    //             $dateEnd = Carbon::now()->endOfWeek();
+    //             break;
+    //         case 'monthly':
+    //             $date = Carbon::now()->startOfMonth();
+    //             $dateEnd = Carbon::now()->endOfMonth();
+    //             break;
+    //         case 'yearly':
+    //             $date = Carbon::now()->startOfYear();
+    //             $dateEnd = Carbon::now()->endOfYear();
+    //             break;
+    //         default:
+    //             $date = Carbon::today();
+    //             $dateEnd = Carbon::tomorrow();
+    //     }
+
+    // // Ambil data statistik penjualan
+    // $tenantStatistics = DB::table('transactions')
+    // ->join('transaction_details', 'transactions.id', '=', 'transaction_details.transaction_id')
+    // ->join('tenant', 'transactions.tenant_id', '=', 'tenant.id') // Join dengan tabel tenants untuk mendapatkan nama tenant
+    // ->select('transactions.tenant_id', 'tenant.namatenant as tenant_namatenant', // Menggunakan nama tabel dan kolom yang benar
+    //          DB::raw('SUM(transactions.amount) as total_income'), 
+    //          DB::raw('SUM(transaction_details.quantity) as total_orders'))
+    // ->whereDate('transactions.created_at', $date)
+    // ->groupBy('transactions.tenant_id', 'tenant.namatenant') // Kelompokkan berdasarkan tenant_id dan nama tenant
+    // ->get();
+        
+    //     return view('penjualan', [
+    //         'user' => $user,
+    //         // 'tenantNames' => $transactionDetails,
+    //         'tenantStatistics' => $tenantStatistics,
+    //         'date' => $date->toDateString(), // Mengirimkan tanggal sebagai string
+    //         'dateEnd' => $dateEnd->toDateString(),
+    //         'filter' => $filter // Kirimkan filter ke view
+    //     ]);
+    $user = Auth::user();
+
+    // Ambil filter dari request, default 'daily'
+    $date = $request->input('date');
+    $month = $request->input('month');
+    $year = $request->input('year');
+
+    // Logika untuk filter data
+    if ($date) {
+        $startDate = Carbon::parse($date)->startOfDay();
+        $endDate = Carbon::parse($date)->endOfDay();
+    } elseif ($month) {
+        $startDate = Carbon::parse($month)->startOfMonth();
+        $endDate = Carbon::parse($month)->endOfMonth();
+    } elseif ($year) {
+        $startDate = Carbon::parse($year . '-01-01')->startOfYear();
+        $endDate = Carbon::parse($year . '-12-31')->endOfYear();
+    } else {
+        $startDate = Carbon::today()->startOfDay();
+        $endDate = Carbon::today()->endOfDay();
+    }
 
     // Ambil data statistik penjualan
     $tenantStatistics = DB::table('transactions')
-    ->join('transaction_details', 'transactions.id', '=', 'transaction_details.transaction_id')
-    ->join('tenant', 'transactions.tenant_id', '=', 'tenant.id') // Join dengan tabel tenants untuk mendapatkan nama tenant
-    ->select('transactions.tenant_id', 'tenant.namatenant as tenant_namatenant', // Menggunakan nama tabel dan kolom yang benar
-             DB::raw('SUM(transactions.amount) as total_income'), 
-             DB::raw('SUM(transaction_details.quantity) as total_orders'))
-    ->whereDate('transactions.created_at', $date)
-    ->groupBy('transactions.tenant_id', 'tenant.namatenant') // Kelompokkan berdasarkan tenant_id dan nama tenant
-    ->get();
-        
-        return view('penjualan', [
-            'user' => $user,
-            // 'tenantNames' => $transactionDetails,
-            'tenantStatistics' => $tenantStatistics,
-            'date' => $date->toDateString(), // Mengirimkan tanggal sebagai string
-            'dateEnd' => $dateEnd->toDateString(),
-            'filter' => $filter // Kirimkan filter ke view
-        ]);
+        ->join('transaction_details', 'transactions.id', '=', 'transaction_details.transaction_id')
+        ->join('tenant', 'transactions.tenant_id', '=', 'tenant.id')
+        ->select(
+            'transactions.tenant_id', 
+            'tenant.namatenant as tenant_namatenant',
+            DB::raw('SUM(transactions.amount) as total_income'), 
+            DB::raw('SUM(transaction_details.quantity) as total_orders')
+        )
+        ->whereBetween('transactions.created_at', [$startDate, $endDate])
+        ->groupBy('transactions.tenant_id', 'tenant.namatenant')
+        ->get();
+    
+    return view('penjualan', [
+        'user' => $user,
+        'tenantStatistics' => $tenantStatistics,
+        'startDate' => $startDate->toDateString(),
+        'endDate' => $endDate->toDateString(),
+        'filter' => compact('date', 'month', 'year')
+    ]);
     }
     
 
