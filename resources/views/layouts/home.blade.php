@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>MUREY CASHIER SYSTEM</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     @vite('resources/css/app.css')
     
 </head>
@@ -32,8 +33,8 @@
                     <img src="{{ asset('img/profil.png') }}" alt="Profile" class="w-10 h-10 rounded-full">
                 </button>
                 <div class=" text-gray-800 text-sm">
-                    <p class="font-bold">{{ $user->name }}</p>
-                    <p class="-mt-1">{{ $user->roles->pluck('name')->implode(', ') }}</p>
+                    <p id="user_name" class="font-bold">{{ $user->name }}</p>
+                    <p class="-mt-1">Admin</p>
                 </div>
             </div> 
         </header>
@@ -101,4 +102,9 @@
         </main>
     </div>
 </body>
+<script>
+    // Simpan nama dan peran pengguna di localStorage setelah login
+    localStorage.setItem('user_name', '{{ Auth::user()->name }}');
+    // localStorage.setItem('user_role', '{{ Auth::user()->roles->pluck('name')->implode(', ') }}');
+</script>
 </html>

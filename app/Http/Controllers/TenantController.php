@@ -310,39 +310,98 @@ class TenantController extends Controller
         return view('tenantHome', compact('todaySales', 'tenant'));
     }
     public function showlaporan(Request $request)
-{
-    $user = Auth::user();
-    $tenantId = Auth::user()->tenant_id;
-    $date = $request->input('date');
-    $month = $request->input('month');
-    $year = $request->input('year');
-
-    $query = DB::table('transactions')
-        ->join('transaction_details', 'transactions.id', '=', 'transaction_details.transaction_id')
-        ->select(
-            'transactions.id as transaction_id',
-            'transaction_details.menu_name as menu_name',
-            'transaction_details.quantity',
-            DB::raw('transaction_details.quantity * transaction_details.price as subtotal'),
-            'transactions.created_at as date'
-        )
-        ->where('transactions.tenant_id', $tenantId); // Filter berdasarkan tenant_id
-
-    if ($date) {
-        $query->whereDate('transactions.created_at', $date);
-    } elseif ($month) {
-        $query->whereYear('transactions.created_at', date('Y', strtotime($month)))
-            ->whereMonth('transactions.created_at', date('m', strtotime($month)));
-    } elseif ($year) {
-        $query->whereYear('transactions.created_at', $year);
-    } else {
-        $query->whereDate('transactions.created_at', Carbon::today());
+    {
+        $user = Auth::user();
+        $tenantId = $user->tenant_id;
+        $date = $request->input('date', date('Y-m-d'));
+        $month = $request->input('month');
+        $year = $request->input('year');
+        $oneMonthAgo = Carbon::parse($date)->subMonth()->format('Y-m-d');
+    
+        // Data Pendapatan Bulanan
+        $monthIncome = DB::table('transaction_details')
+            ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
+            ->select(
+                DB::raw('DATE(transaction_details.created_at) as date'),
+                DB::raw('SUM(transaction_details.subtotal) as total_income')
+            )
+            ->where('transactions.tenant_id', $tenantId) // Filter berdasarkan tenant_id
+            ->whereBetween('transaction_details.created_at', [$oneMonthAgo, $date])
+            ->groupBy(DB::raw('DATE(transaction_details.created_at)'))
+            ->orderBy('date')
+            ->get();
+    
+        // Data Jumlah Transaksi Bulanan
+        $monthTransactions = DB::table('transaction_details')
+            ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
+            ->select(
+                DB::raw('DATE(transaction_details.created_at) as date'),
+                DB::raw('SUM(transaction_details.quantity) as total_transactions')
+            )
+            ->where('transactions.tenant_id', $tenantId) // Filter berdasarkan tenant_id
+            ->whereBetween('transaction_details.created_at', [$oneMonthAgo, $date])
+            ->groupBy(DB::raw('DATE(transaction_details.created_at)'))
+            ->orderBy('date')
+            ->get();
+    
+        // Persiapkan Data untuk Grafik
+        $dates = [];
+        $incomes = [];
+        $transactions = [];
+    
+        foreach ($monthIncome as $income) {
+            $dates[] = $income->date;
+            $incomes[] = $income->total_income;
+        }
+    
+        foreach ($monthTransactions as $transaction) {
+            $transactions[] = $transaction->total_transactions;
+        }
+    
+        // Statistik Tenant
+        $tenantStatistics = DB::table('transactions')
+            ->join('transaction_details', 'transactions.id', '=', 'transaction_details.transaction_id')
+            ->join('tenant', 'transactions.tenant_id', '=', 'tenant.id')
+            ->select(
+                'transactions.tenant_id',
+                'tenant.namatenant as tenant_name',
+                DB::raw('SUM(transaction_details.subtotal) as total_income'),
+                DB::raw('SUM(transaction_details.quantity) as total_orders')
+            )
+            ->where('transactions.tenant_id', $tenantId) // Filter berdasarkan tenant_id
+            ->whereBetween('transactions.created_at', [$oneMonthAgo, $date])
+            ->groupBy('transactions.tenant_id', 'tenant.namatenant')
+            ->get();
+    
+        // Query untuk Detail Penjualan
+        $query = DB::table('transactions')
+            ->join('transaction_details', 'transactions.id', '=', 'transaction_details.transaction_id')
+            ->select(
+                'transactions.id as transaction_id',
+                'transaction_details.menu_name as menu_name',
+                'transaction_details.quantity',
+                DB::raw('transaction_details.quantity * transaction_details.price as subtotal'),
+                'transactions.created_at as date'
+            )
+            ->where('transactions.tenant_id', $tenantId); // Filter berdasarkan tenant_id
+    
+        // Filter berdasarkan tanggal, bulan, atau tahun
+        if ($date) {
+            $query->whereDate('transactions.created_at', $date);
+        } elseif ($month) {
+            $query->whereYear('transactions.created_at', date('Y', strtotime($month)))
+                ->whereMonth('transactions.created_at', date('m', strtotime($month)));
+        } elseif ($year) {
+            $query->whereYear('transactions.created_at', $year);
+        } else {
+            $query->whereDate('transactions.created_at', Carbon::today());
+        }
+    
+        $salesDetails = $query->get();
+    
+        return view('tenants.laporanpenjualan', compact('salesDetails', 'user', 'tenantStatistics', 'date', 'dates', 'incomes', 'transactions'));
     }
-
-    $salesDetails = $query->get();
-
-    return view('tenants.laporanpenjualan', compact('salesDetails', 'user'));
-}
+    
 
     public function showmenu(Request $request)
     {
@@ -479,12 +538,25 @@ class TenantController extends Controller
 
         return redirect()->route('tenants.notifications', $transaction_detail)->with('success', 'Pesanan telah disetujui.');
     }
+// public function showOrders()
+// {
+//     $user = Auth::user();
+//     $items = Order::where('tenant_id', $user->tenant_id) // Ambil data sesuai tenant_id
+//                                 ->orderBy('created_at', 'desc') // Atur urutan jika perlu
+//                                 ->get(); 
+
+//     return view('tenants.notifications', compact('items', 'user'));
+// }
+
 public function showOrders()
 {
     $user = Auth::user();
+    $today = now()->startOfDay(); // Ambil awal hari ini
+
     $items = Order::where('tenant_id', $user->tenant_id) // Ambil data sesuai tenant_id
-                                ->orderBy('created_at', 'desc') // Atur urutan jika perlu
-                                ->get(); 
+                  ->where('created_at', '>=', $today) // Filter pesanan yang dibuat hari ini
+                  ->orderBy('created_at', 'desc') // Atur urutan jika perlu
+                  ->get(); 
 
     return view('tenants.notifications', compact('items', 'user'));
 }

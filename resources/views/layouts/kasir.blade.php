@@ -32,11 +32,9 @@
                     <img src="{{ asset('img/profil.png') }}" alt="Profile" class="w-10 h-10 rounded-full">
                 </button>
                 <div class="text-gray-800 text-sm">
-                    <p class="font-bold">{{ $user->name }}</p>
+                    <p id="user_name" class="font-bold">{{ $user->name }}</p>
                     <p class="-mt-1">
-                        @foreach($user->roles as $role)
-                            {{ $role->name }}@if(!$loop->last), @endif
-                        @endforeach
+                        Kasir
                     </p>
                 </div>
             </div>
@@ -103,6 +101,11 @@
             event.preventDefault();
             document.getElementById('logout-form').submit();
         });
+    </script>
+    <script>
+    // Simpan nama dan peran pengguna di localStorage setelah login
+    localStorage.setItem('user_name', '{{ Auth::user()->name }}');
+    // localStorage.setItem('user_role', '{{ Auth::user()->roles->pluck('name')->implode(', ') }}');
     </script>
 </body>
 </html>
