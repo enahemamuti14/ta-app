@@ -70,9 +70,10 @@
                         Menu
                     </a>       
                 </nav>
-                <form action="{{ route('logout') }}" method="POST" class="flex flex-col items-center px-0 py-44">
+                <!-- Tombol Logout -->
+                <form action="{{ route('logout') }}" method="POST" class="flex flex-col items-center px-0 py-44" id="logoutForm">
                     @csrf
-                    <button type="submit">
+                    <button type="button" onclick="showLogoutModal()">
                         <img src="{{ asset('img/logout.png') }}" alt="Logout" style="width: 30px; height: 30px;">
                     </button>
                 </form>
@@ -82,11 +83,40 @@
         <main class="flex-1 p-6 overflow-auto">
             @yield('content')
         </main>
+            <!-- Pop-up Modal -->
+            <div id="logoutModal" class="fixed inset-0 items-center justify-center bg-gray-800 bg-opacity-50 hidden z-50">
+                <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+                    <h2 class="text-xl font-semibold mb-4 text-center">Konfirmasi Logout</h2>
+                    <p class="mb-6 text-black text-center">Apakah Anda yakin ingin logout?</p>
+                    <div class="flex justify-center">
+                        <button type="button" onclick="hideLogoutModal()" class="bg-blue-500 text-white px-4 py-2 rounded mr-2">Batal</button>
+                        <button type="button" onclick="confirmLogout()" class="bg-red-500 text-white px-4 py-2 rounded">Logout</button>
+                    </div>
+                </div>
+            </div>
     </div>
 </body>
 <script>
     // Simpan nama dan peran pengguna di localStorage setelah login
     localStorage.setItem('user_name', '{{ Auth::user()->name }}');
     // localStorage.setItem('user_role', '{{ Auth::user()->roles->pluck('name')->implode(', ') }}');
+    // Menampilkan modal
+    function showLogoutModal() {
+                var modal = document.getElementById('logoutModal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+
+            // Menyembunyikan modal
+            function hideLogoutModal() {
+                var modal = document.getElementById('logoutModal');
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+            }
+
+            // Mengonfirmasi logout
+            function confirmLogout() {
+                document.getElementById('logoutForm').submit(); // Submit form logout
+            }
 </script>
 </html>
